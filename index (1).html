@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Biye Bari Crashers</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#3b0a1a;--panel:#5a0f26;--gold:#f2b134;--mari:#f28c28;--jade:#0f7b6c;--ivory:#fff1d6;--red:#e63946}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ivory);font-family:'Baloo 2',system-ui,sans-serif;font-weight:500;text-align:center;padding:12px}
+h1{font-weight:800;font-size:clamp(2rem,8vw,3.4rem);margin:.2em 0 0;color:var(--gold);line-height:1}
+.sub{margin:.2em 0 1em;opacity:.85}
+.card{max-width:420px;margin:0 auto;background:var(--panel);border:3px dashed var(--mari);border-radius:18px;padding:18px}
+input,button{font:inherit;font-size:1.05rem;border-radius:12px;border:0;padding:10px 14px;margin:5px 0;width:100%}
+input{background:var(--ivory);color:#3b0a1a;text-align:center}
+button{background:var(--gold);color:#3b0a1a;font-weight:800;cursor:pointer}
+button.alt{background:var(--jade);color:#fff}
+select{font:inherit;width:100%;padding:10px;border-radius:12px;margin:5px 0;background:var(--ivory);color:#3b0a1a}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:2px}
+#msg{color:#ffd0d0;min-height:1.4em;margin:.5em 0 0}
+.code{font-size:3rem;font-weight:800;letter-spacing:.15em;color:var(--gold)}
+ul{list-style:none;padding:0;margin:.6em 0}
+li{background:#7a1530;border-radius:10px;padding:6px;margin:4px 0}
+#game{max-width:900px;margin:0 auto}
+#hud{display:flex;gap:10px;align-items:center;justify-content:space-between;font-weight:800}
+#bar{flex:1;height:14px;background:#2a0712;border-radius:8px;overflow:hidden}
+#sb{height:100%;width:0;background:linear-gradient(90deg,var(--jade),var(--gold),var(--red))}
+#cv{width:100%;max-height:68vh;border-radius:14px;touch-action:none;background:#000;display:block;margin:6px auto}
+#story{font-size:.95rem;color:var(--gold)}
+#feed{min-height:4.6em;font-size:.95rem}
+#act{max-width:260px}
+.hint{font-size:.85rem;opacity:.8}
+ol{text-align:left;max-width:380px;margin:1em auto;padding-left:1.6em}
+</style>
+</head>
+<body>
+<h1>Biye Bari Crashers</h1>
+<p class="sub">Eat free biryani. Dodge the aunties. Don't get thrown out.</p>
+
+<div id="home" class="card">
+  <input id="nm" maxlength="12" placeholder="Your name" autocomplete="off">
+  <button id="mk">Create private room</button>
+  <input id="cd" maxlength="4" placeholder="Room code" autocomplete="off">
+  <button id="jn" class="alt">Join room</button>
+  <p id="msg"></p>
+</div>
+
+<div id="lobby" class="card" hidden>
+  <div>Room code</div><div class="code" id="rc"></div>
+  <ul id="pl"></ul>
+  <p id="ls"></p>
+  <select id="vn" hidden><option value="0">Venue: Community Center</option><option value="1">Venue: Rooftop Gaye Holud</option><option value="2">Venue: Village Uthan</option></select>
+  <button id="st" hidden>Start the wedding</button>
+</div>
+
+<div id="game" hidden>
+  <div id="hud"><span id="tm"></span><div id="bar"><div id="sb"></div></div><span id="sc"></span></div>
+  <div id="story"></div>
+  <canvas id="cv" width="800" height="500"></canvas>
+  <div id="feed"></div>
+  <button id="act" class="alt">Eat / Snap / Steal (E)</button>
+  <p class="hint">Move: WASD, arrows, or touch the screen. Tables 🍛 = food, bride 👰 = photo, shoes 👞 = steal, rasmalai 🍮 = bonus, borhani 🥛 = cools you down, dance floor 💃 = mash the button, 🔥 = biryani rush. Stay close to your buddy (same colour) to halve the heat, and out of the aunties' 👵 red circle.</p>
+</div>
+
+<div id="end" class="card" hidden>
+  <h2 id="win" style="margin:0;color:var(--gold)"></h2>
+  <ol id="rs"></ol>
+  <button id="again" hidden>Back to lobby</button>
+  <p id="wait" class="hint">Waiting for the host…</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),W=800,H=500,PRE='biyecrash-';
+const MAPS=[
+{TB:[[150,150],[150,350],[400,110],[400,390],[650,150],[650,350]],BR:[400,250],SH:[745,455],MI:[730,250],BO:[70,250],DF:[240,250],
+ A:[[[100,80],[700,80],[700,200],[100,200]],[[100,300],[700,300],[700,430],[100,430]],[[400,60],[400,440],[250,250],[550,250]]]},
+{TB:[[120,120],[300,120],[500,120],[680,120],[200,380],[600,380]],BR:[450,300],SH:[60,440],MI:[740,250],BO:[60,250],DF:[250,260],
+ A:[[[60,60],[740,60],[740,200],[60,200]],[[60,320],[740,320],[740,440],[60,440]],[[400,100],[400,420],[200,260],[600,260]]]},
+{TB:[[200,100],[400,100],[600,100],[200,400],[400,400],[600,400]],BR:[400,250],SH:[740,250],MI:[60,250],BO:[740,60],DF:[250,250],
+ A:[[[80,80],[720,80],[720,420],[80,420]],[[400,60],[400,440]],[[100,250],[700,250],[400,200],[400,300]]]}];
+let TB,BR,SH,MI,BO,DF,T={},myRole='Crasher';
+const RD={Crasher:'no special power',Pickpocket:'act near a friend to steal points',Distractor:'act away from stations to blind nearby aunties',Insider:'SECRET traitor: act near a friend to expose them',Medic:'act near a friend to calm them down',Saboteur:'act anywhere to cause a blackout (40s cooldown)',Waiter:'eating never raises your suspicion',Sprinter:'you run faster'};
+function setMap(v){({TB,BR,SH,MI,BO,DF}=MAPS[v])}
+setMap(0);
+const STORY=["Groom's cousin from Chittagong","Bride's phupu's neighbour","Photographer's assistant","Caterer's nephew","Groom's bhaiya's friend","Bride's university senior"];
+const rnd=a=>a[Math.random()*a.length|0],cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const dist=(p,t)=>Math.hypot(p.x-t[0],p.y-t[1]);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>'&#'+c.charCodeAt(0)+';');
+let peer,conns={},hostConn,isHost=false,me='H',L={},G=null,S=null,keys={},ptr=null;
+
+function show(id){['home','lobby','game','end'].forEach(x=>$(x).hidden=x!==id)}
+function msg(t){$('msg').textContent=t}
+function nm(){return $('nm').value.trim().slice(0,12)||'Guest'+(Math.random()*90+10|0)}
+
+/* ---------- networking ---------- */
+function mkHost(){
+  const code=Array.from({length:4},()=>rnd('ABCDEFGHJKMNPQRSTUVWXYZ')).join('');
+  peer=new Peer(PRE+code);
+  peer.on('open',()=>{isHost=true;me='H';L={H:nm()};$('rc').textContent=code;lobbyBroadcast();show('lobby')});
+  peer.on('error',e=>e.type==='unavailable-id'?mkHost():msg('Network error: '+e.type));
+  peer.on('connection',c=>{
+    conns[c.peer]=c;
+    c.on('data',m=>onHost(c.peer,m,c));
+    c.on('close',()=>{delete conns[c.peer];if(G){if(G.p[c.peer])G.p[c.peer].o=1}else{delete L[c.peer];lobbyBroadcast()}});
+  });
+}
+function joinRoom(code){
+  peer=new Peer();
+  peer.on('open',id=>{
+    me=id;hostConn=peer.connect(PRE+code,{reliable:true});
+    hostConn.on('open',()=>hostConn.send({t:'join',n:nm()}));
+    hostConn.on('data',onClient);
+    hostConn.on('close',()=>{msg('The host left the room.');show('home')});
+  });
+  peer.on('error',e=>msg(e.type==='peer-unavailable'?'Room not found. Check the code.':'Network error: '+e.type));
+}
+const send=m=>{for(const c of Object.values(conns))if(c.open)c.send(m)};
+
+function onHost(id,m,c){
+  if(m.t==='join'){
+    if(G||Object.keys(L).length>=10){c.send({t:'no'});return}
+    L[id]=String(m.n).slice(0,12)||'Guest';lobbyBroadcast();
+  }else if(G&&G.p[id]){
+    if(m.t==='i'){G.p[id].dx=cl(+m.x||0,-1,1);G.p[id].dy=cl(+m.y||0,-1,1)}
+    else if(m.t==='a')act(G.p[id]);
+  }
+}
+function onClient(m){
+  if(m.t==='l'){renderLobby(m.list);show('lobby')}
+  else if(m.t==='go'){setMap(m.v);show('game')}
+  else if(m.t==='r')myRole=m.r;
+  else if(m.t==='s'){S=m;if(m.over)showEnd()}
+  else if(m.t==='back')show('lobby');
+  else if(m.t==='no'){msg('Room is full or already started.');show('home')}
+}
+
+/* ---------- lobby ---------- */
+function lobbyBroadcast(){const list=Object.values(L);send({t:'l',list});renderLobby(list)}
+function renderLobby(list){
+  $('pl').innerHTML=list.map(n=>'<li>'+esc(n)+'</li>').join('');
+  const ok=[4,6,8,10].includes(list.length);
+  $('ls').textContent=ok?'Ready to crash!':'Need 4, 6, 8 or 10 players ('+list.length+' in the room).';
+  $('st').hidden=!isHost;$('vn').hidden=!isHost;$('st').disabled=!ok;
+}
+
+/* ---------- host game simulation ---------- */
+function start(){
+  const ids=Object.keys(L);if(![4,6,8,10].includes(ids.length))return;
+  const v=+$('vn').value;setMap(v);
+  G={time:150,dark:0,el:0,over:false,feed:[],p:{},res:null,
+    aunts:MAPS[v].A
+      .map(wp=>({x:wp[0][0],y:wp[0][1],wp,i:1}))};
+  ids.forEach((id,i)=>G.p[id]={id,i,n:L[id],x:280+i*24,y:470,dx:0,dy:0,sus:0,sc:0,o:0,cd:0,bo:0,rc:0,ot:-9,e:0,tab:[],q:{},story:rnd(STORY)});
+  ids.forEach((id,i)=>G.p[id].b=ids[i^1]);
+  const sf=a=>[...a].sort(()=>Math.random()-.5),rs=(ids.length>=6?['Insider']:[]).concat(sf(['Distractor','Pickpocket','Medic','Saboteur','Waiter','Sprinter'])).slice(0,ids.length/2),sh=sf(ids);
+  rs.forEach((r,k)=>G.p[sh[k]].r=r);Object.values(G.p).forEach(p=>p.r=p.r||'Crasher');
+  send({t:'go',v});show('game');
+  Object.entries(conns).forEach(([id,c])=>G.p[id]&&c.open&&c.send({t:'r',r:G.p[id].r}));myRole=G.p.H.r;
+  G.timer=setInterval(tick,50);
+}
+function feed(s){G.feed.push(s);if(G.feed.length>4)G.feed.shift()}
+function caught(p){
+  p.o=1;p.ot=G.el;const b=G.p[p.b];if(b&&!b.o){b.sus=Math.min(99,b.sus+20);feed(`${b.n} saw ${p.n} get thrashed and is sweating 😰`)}
+  feed(rnd([`${p.n} got the Mama-with-slippers treatment 🩴💥`,`${p.n} was launched out the gate by 12 uncles 🚀`,`"Ke tumi?!" ${p.n} was thrashed and thrown out 😵`]));
+}
+function chug(p){
+  const k=G.el-p.cs,u=(k*1.1)%2,d=Math.abs((u<1?u:2-u)-.5);p.cs=0;p.cd=G.el+.5;
+  if(d<.07){p.sus=Math.max(0,p.sus-50);p.sc+=15;feed(`${p.n} chugged borhani PERFECTLY and is totally calm 🥛✨`)}
+  else if(d<.2){p.sus=Math.max(0,p.sus-25);p.sc+=5;feed(`${p.n} finished the borhani and cooled down 🥛`)}
+  else{p.sus=Math.min(100,p.sus+10);feed(`${p.n} choked on borhani and coughed everywhere 🤧`)}
+}
+function roleAct(p){
+  const t=G.el;if(t<p.rc)return;
+  const o=Object.values(G.p).find(q=>q!==p&&!q.o&&Math.hypot(q.x-p.x,q.y-p.y)<50);
+  if(p.r==='Pickpocket'&&o&&o.sc>0){const k=Math.min(15,o.sc);o.sc-=k;p.sc+=k;p.rc=t+12;p.sus=Math.min(100,p.sus+10);feed(`${o.n} got their pocket picked: -${k} pts 🕵️`)}
+  else if(p.r==='Insider'&&o){o.sus=Math.min(100,o.sus+40);p.sc+=30;p.rc=t+15;feed(`Somebody loudly asked "Who invited ${o.n}?!" 📢`)}
+  else if(p.r==='Distractor'){G.aunts.forEach(a=>{if(Math.hypot(a.x-p.x,a.y-p.y)<260)a.fz=4});p.rc=t+20;feed('A fake fight broke out over the seating 🗣️')}
+  else if(p.r==='Medic'&&o){o.sus=Math.max(0,o.sus-35);p.sc+=5;p.rc=t+15;feed(`${p.n} fanned ${o.n} with a hand-fan and cooled them down 🪭`)}
+  else if(p.r==='Saboteur'){G.dark=5;p.rc=t+40;feed('⚡ The generator mysteriously died!')}
+}
+function act(p){
+  if(p.o||G.over||G.el<p.cd)return;
+  if(p.cs>0){chug(p);return}
+  const t=TB.findIndex(t=>dist(p,t)<52);
+  if(t>=0){
+    p.cd=G.el+1.1;p.sc+=10;p.e++;if(G.pot&&G.pot.i===t){G.pot=null;p.sc+=40;feed(`${p.n} won the biryani rush: +40 🏁`)}if(p.r!=='Waiter')p.sus=Math.min(100,p.sus+9);if(!p.tab.includes(t))p.tab.push(t);
+    feed(rnd([`${p.n} is on plate number ${p.e} 🍛`,`${p.n} found a free kacchi seat 😋`,`${p.n} "forgot" this isn't their cousin's wedding 🍽️`]));
+    if(p.tab.length>=3&&!p.q.t){p.q.t=1;p.sc+=50;feed(`${p.n} ate at 3 tables: +50 🍽️`)}
+  }else if(dist(p,BR)<62&&!p.q.b){
+    p.cd=G.el+1;p.q.b=1;p.sc+=40;p.sus=Math.min(100,p.sus+25);feed(`${p.n} got a photo with the bride: +40 📸`);
+  }else if(dist(p,SH)<50&&!p.q.s){
+    p.cd=G.el+1;p.q.s=1;p.sc+=60;p.sus=Math.min(100,p.sus+35);feed(`${p.n} stole the groom's shoes: +60 👞 (juta churi!)`);
+  }else if(dist(p,MI)<50&&!p.q.m){
+    p.cd=G.el+1;p.q.m=1;p.sc+=30;p.sus=Math.min(100,p.sus+15);feed(`${p.n} raided the rasmalai counter: +30 🍮`);
+  }else if(dist(p,BO)<50&&G.el>=p.bo){
+    p.cd=G.el+.6;p.bo=G.el+20;p.cs=G.el;feed(`${p.n} lifted a giant glass of borhani 🥛`);
+  }else if(dist(p,DF)<55){
+    p.cd=G.el+.45;p.sc+=4;p.sus=Math.min(100,p.sus+5);p.dn=(p.dn||0)+1;if(p.dn%6===0)feed(`${p.n} is destroying the dance floor 💃`);
+  }else roleAct(p);
+}
+function snap(){
+  return{t:'s',el:G.el,pot:G.pot?G.pot.i:-1,time:Math.ceil(G.time),dark:G.dark>0,over:G.over,feed:G.feed,res:G.res,
+    aunts:G.aunts.map(a=>[a.x|0,a.y|0,a.fz>0?1:0]),
+    p:Object.values(G.p).map(p=>({id:p.id,i:p.i,n:p.n,x:p.x|0,y:p.y|0,s:p.sus|0,sc:p.sc,o:p.o,st:p.story,b:p.b,ot:p.ot,cs:p.cs>0?p.cs:0}))};
+}
+function tick(){
+  const dt=.05;G.el+=dt;G.time-=dt;
+  if(G.pot){G.pot.t-=dt;if(G.pot.t<=0)G.pot=null}
+  else if(Math.random()<dt/25){G.pot={i:Math.random()*6|0,t:8};feed('🍛 A fresh biryani pot just opened! First there gets +40')}
+  if(G.dark>0)G.dark-=dt;
+  else if(Math.random()<dt/35){G.dark=6;feed('⚡ Load shedding! Lights out, nobody can see you.')}
+  G.aunts.forEach(a=>{
+    if(a.fz>0){a.fz-=dt;return}
+    const t=a.wp[a.i],dx=t[0]-a.x,dy=t[1]-a.y,d=Math.hypot(dx,dy);
+    if(d<5)a.i=(a.i+1)%a.wp.length;else{a.x+=dx/d*60*dt;a.y+=dy/d*60*dt}
+  });
+  const ps=Object.values(G.p);
+  ps.forEach(p=>{
+    if(p.cs>0&&G.el-p.cs>3){p.cs=0;p.sus=Math.min(100,p.sus+10);feed(`${p.n} froze mid-chug and spilled borhani 🥛`)}
+    if(p.o)return;
+    const m=Math.max(1,Math.hypot(p.dx,p.dy));
+    const sp=p.r==='Sprinter'?175:140;p.x=cl(p.x+p.dx/m*sp*dt,12,W-12);p.y=cl(p.y+p.dy/m*sp*dt,12,H-12);
+    const seen=G.dark<=0&&G.aunts.some(a=>!(a.fz>0)&&Math.hypot(a.x-p.x,a.y-p.y)<95);
+    const bd=G.p[p.b],cov=bd&&!bd.o&&Math.hypot(bd.x-p.x,bd.y-p.y)<70;p.sus=cl(p.sus+(seen?(cov?12:24)*dt:-5*dt),0,100);
+    if(p.sus>=100)caught(p);
+  });
+  if(G.time<=0||ps.filter(p=>!p.o).length<=1)end();
+  S=snap();send(S);
+}
+function end(){
+  if(G.over)return;G.over=true;clearInterval(G.timer);
+  Object.values(G.p).forEach(p=>T[p.id]=(T[p.id]||0)+p.sc+(p.o?0:20));
+  G.res=Object.values(G.p).sort((a,b)=>(a.o-b.o)||(b.sc-a.sc)).map(p=>({n:p.n,sc:p.sc,o:p.o,t:T[p.id],r:p.r}));
+  S=snap();send(S);showEnd();
+}
+function showEnd(){
+  if(!S||!S.res)return;
+  $('win').textContent=S.res[0].n+(S.res[0].o?' (thrown out, but best score!)':' crashed the best 🏆');
+  $('rs').innerHTML=S.res.map(r=>`<li>${esc(r.n)}${r.r==='Insider'?' 🕶️ (the Insider)':''}: ${r.sc} pts ${r.o?'(thrown out 🩴)':'(stayed)'} | series total ${r.t}</li>`).join('');
+  $('again').hidden=!isHost;$('wait').hidden=isHost;show('end');
+}
+
+/* ---------- input ---------- */
+const doAct=()=>isHost?(G&&G.p.H&&act(G.p.H)):hostConn&&hostConn.send({t:'a'});
+addEventListener('keydown',e=>{
+  const k=e.key.length>1?e.key:e.key.toLowerCase();keys[k]=1;
+  if(k==='e'||k===' ')doAct();
+  if(k.startsWith('Arrow')||k===' ')e.preventDefault();
+});
+addEventListener('keyup',e=>{keys[e.key.length>1?e.key:e.key.toLowerCase()]=0});
+const cv=$('cv'),cx=cv.getContext('2d');
+const setPtr=e=>{const r=cv.getBoundingClientRect();ptr={x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}};
+cv.addEventListener('pointerdown',setPtr);
+cv.addEventListener('pointermove',e=>{if(ptr)setPtr(e)});
+['pointerup','pointerleave','pointercancel'].forEach(n=>cv.addEventListener(n,()=>ptr=null));
+setInterval(()=>{
+  if(!S||$('game').hidden)return;
+  let x=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0),y=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0);
+  const m=S.p.find(p=>p.id===me);
+  if(ptr&&m){const dx=ptr.x-m.x,dy=ptr.y-m.y,d=Math.hypot(dx,dy);if(d>14){x=dx/d;y=dy/d}}
+  if(isHost){if(G&&G.p.H){G.p.H.dx=x;G.p.H.dy=y}}else if(hostConn&&hostConn.open)hostConn.send({t:'i',x,y});
+},50);
+
+/* ---------- drawing ---------- */
+cx.textAlign='center';cx.textBaseline='middle';
+const em=(s,x,y,z)=>{cx.font=z+'px serif';cx.fillText(s,x,y)};
+let au,lf='';
+function beep(f){try{au=au||new AudioContext();const o=au.createOscillator(),g=au.createGain();o.type='square';o.frequency.value=f;g.gain.value=.05;o.connect(g);g.connect(au.destination);o.start();o.stop(au.currentTime+.12)}catch(e){}}
+function draw(){
+  requestAnimationFrame(draw);
+  if(!S||$('game').hidden)return;
+  cx.fillStyle='#7a1530';cx.fillRect(0,0,W,H);
+  cx.fillStyle='#f6d58e';cx.fillRect(22,22,W-44,H-44);
+  cx.fillStyle='#e63946';cx.fillRect(BR[0]-70,BR[1]-45,140,90);
+  cx.lineCap='round';cx.strokeStyle='#f28c28';cx.lineWidth=14;cx.setLineDash([0,16]);cx.strokeRect(11,11,W-22,H-22);cx.setLineDash([]);
+  TB.forEach(t=>{cx.fillStyle='#0f7b6c';cx.beginPath();cx.arc(t[0],t[1],36,0,7);cx.fill();em('🍛',t[0],t[1],34)});
+  em('👰',BR[0],BR[1],44);em('👞',SH[0],SH[1],30);em('🍮',MI[0],MI[1],34);em('🥛',BO[0],BO[1],34);cx.fillStyle='#f28c28';cx.beginPath();cx.arc(DF[0],DF[1],48,0,7);cx.fill();em('💃',DF[0],DF[1],34);if(S.pot>=0)em('🔥',TB[S.pot][0],TB[S.pot][1]-36,26);
+  cx.fillStyle='#7a1530';cx.font='800 14px sans-serif';cx.fillText('GATE',400,484);
+  if(!S.dark)S.aunts.forEach(a=>{if(a[2])return;cx.fillStyle='rgba(230,57,70,.16)';cx.beginPath();cx.arc(a[0],a[1],95,0,7);cx.fill()});
+  S.aunts.forEach(a=>em('👵',a[0],a[1],34));
+  S.p.forEach(p=>{
+    if(p.o){
+      const k=S.el-p.ot;
+      if(k<1.6)for(let j=0;j<6;j++){const a=j*1.05+k*4,r=14+k*38;em('🩴',p.x+Math.cos(a)*r,p.y+Math.sin(a)*r,18)}
+      if(k<.5)em('💥',p.x,p.y,60*(1+k));
+      cx.globalAlpha=.55;em('😵',p.x,p.y,26);cx.globalAlpha=1}
+    else{
+      cx.fillStyle='hsl('+(p.i>>1)*70+',75%,55%)';cx.beginPath();cx.arc(p.x,p.y,13,0,7);cx.fill();
+      cx.strokeStyle=p.id===me?'#fff':'#3b0a1a';cx.lineWidth=3;cx.stroke();
+      if(p.s>60)em('❗',p.x+14,p.y-16,16);
+    }
+    cx.fillStyle='#3b0a1a';cx.font='800 12px sans-serif';cx.fillText(p.n,p.x,p.y-22);
+  });
+  if(S.dark){cx.fillStyle='rgba(0,0,0,.72)';cx.fillRect(0,0,W,H)}
+  const m=S.p.find(p=>p.id===me)||{};
+  if(m.cs>0){const u=((S.el-m.cs)*1.1)%2,q=u<1?u:2-u;cx.fillStyle='#2a0712';cx.fillRect(250,420,300,22);cx.fillStyle='#0f7b6c';cx.fillRect(250+300*.3,420,300*.4,22);cx.fillStyle='#f2b134';cx.fillRect(250+300*.43,420,300*.14,22);cx.fillStyle='#fff';cx.fillRect(250+300*q-3,414,6,34);cx.font='800 14px sans-serif';cx.fillText('Press E or the button to stop in the gold!',400,404)}
+  $('tm').textContent=S.time+'s';$('sc').textContent=(m.sc||0)+' pts';$('sb').style.width=(m.s||0)+'%';
+  const B=S.p.find(p=>p.id===m.b)||{n:'?'};
+  $('story').textContent=m.o?'You got thrown out. Watch the rest and heckle.':'Cover: '+m.st+'. Buddy: '+B.n+'. Role: '+myRole+' ('+RD[myRole]+')';
+  $('feed').innerHTML=S.feed.map(esc).join('<br>');
+  const l2=S.feed[S.feed.length-1]||'';if(l2!==lf){lf=l2;beep(/💥|🚀|😵|😰/.test(l2)?150:/⚡/.test(l2)?90:660)}
+}
+draw();
+
+/* ---------- buttons ---------- */
+$('mk').onclick=()=>{msg('Creating room…');mkHost()};
+$('jn').onclick=()=>{const c=$('cd').value.trim().toUpperCase();if(c.length!==4)return msg('Enter the 4-letter room code.');msg('Joining…');joinRoom(c)};
+$('st').onclick=start;
+$('act').onclick=doAct;
+$('again').onclick=()=>{G=null;S=null;send({t:'back'});lobbyBroadcast();show('lobby')};
+</script>
+</body>
+</html>
